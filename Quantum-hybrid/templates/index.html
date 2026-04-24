@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BreastScan AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="page-shell">
+    <section class="hero-panel">
+      <div class="hero-copy">
+        <p class="eyebrow">Hybrid Histopathology Classifier</p>
+        <h1>Upload a tissue image and get a live benign vs malignant prediction.</h1>
+        <p class="lead">
+          This interface uses your saved <code>best_model.pt</code> checkpoint from the hybrid
+          ResNet50 + quantum-inspired + attention model, then returns class probabilities,
+          confidence, and upload metadata in one place.
+        </p>
+        <div class="hero-badges">
+          <span>224 x 224 inference</span>
+          <span>Single-image upload</span>
+          <span>JSON API included</span>
+        </div>
+      </div>
+      <div class="hero-metrics">
+        <div class="metric-card glass">
+          <span class="metric-label">Checkpoint</span>
+          <strong>{{ model_info.checkpoint_name }}</strong>
+        </div>
+        <div class="metric-card glass">
+          <span class="metric-label">Best Validation Accuracy</span>
+          <strong>
+            {% if model_info.best_val_accuracy is not none %}
+              {{ "%.2f"|format(model_info.best_val_accuracy * 100) }}%
+            {% else %}
+              Unknown
+            {% endif %}
+          </strong>
+        </div>
+        <div class="metric-card glass">
+          <span class="metric-label">Best Epoch</span>
+          <strong>{{ model_info.best_epoch or "Unknown" }}</strong>
+        </div>
+        <div class="metric-card glass">
+          <span class="metric-label">Inference Device</span>
+          <strong>{{ model_info.device }}</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="workspace-grid">
+      <div class="panel glass upload-panel">
+        <div class="panel-header">
+          <h2>Upload Image</h2>
+          <p>Drag an image in or browse for a histopathology sample.</p>
+        </div>
+
+        <form method="post" enctype="multipart/form-data" class="upload-form">
+          <label class="dropzone" for="image-input">
+            <input id="image-input" type="file" name="image" accept=".png,.jpg,.jpeg,.bmp,.tif,.tiff,.webp" required>
+            <span class="dropzone-title">Drop image here</span>
+            <span class="dropzone-subtitle">or click to choose a file from your computer</span>
+            <span class="dropzone-hint">Supported: PNG, JPG, JPEG, BMP, TIFF, WEBP</span>
+          </label>
+          <button class="predict-button" type="submit">Run Prediction</button>
+        </form>
+
+        {% if error_message %}
+        <div class="alert-card">
+          <strong>Upload issue</strong>
+          <p>{{ error_message }}</p>
+        </div>
+        {% endif %}
+
+        <div class="panel-footer">
+          <div>
+            <h3>API Endpoint</h3>
+            <p><code>POST /api/predict</code> with form-data field <code>image</code></p>
+          </div>
+          <div>
+            <h3>Note</h3>
+            <p>This interface supports decision assistance only and is not a clinical diagnosis tool.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel glass result-panel">
+        <div class="panel-header">
+          <h2>Prediction Results</h2>
+          <p>Confidence bars and image details update after each upload.</p>
+        </div>
+
+        {% if result_payload %}
+        <div class="result-layout">
+          <div class="preview-card">
+            <img src="{{ result_payload.image_data_url }}" alt="Uploaded histopathology image preview">
+          </div>
+
+          <div class="prediction-card {{ result_payload.severity_tone }}">
+            <p class="prediction-kicker">Model Decision</p>
+            <h3>{{ result_payload.result.predicted_label }}</h3>
+            <p class="prediction-confidence">
+              Confidence {{ "%.2f"|format(result_payload.result.confidence * 100) }}%
+            </p>
+            <div class="bar-group">
+              <div class="bar-label-row">
+                <span>Benign</span>
+                <span>{{ "%.2f"|format(result_payload.result.benign_probability * 100) }}%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill benign" style="width: {{ result_payload.result.benign_probability * 100 }}%;"></div>
+              </div>
+              <div class="bar-label-row">
+                <span>Malignant</span>
+                <span>{{ "%.2f"|format(result_payload.result.malignant_probability * 100) }}%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill malignant" style="width: {{ result_payload.result.malignant_probability * 100 }}%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="details-grid">
+            <div class="detail-card">
+              <span class="detail-label">File Name</span>
+              <strong>{{ result_payload.filename }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">File Size</span>
+              <strong>{{ result_payload.filesize_kb }} KB</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Dimensions</span>
+              <strong>{{ result_payload.dimensions }}</strong>
+            </div>
+            <div class="detail-card">
+              <span class="detail-label">Color Mode</span>
+              <strong>{{ result_payload.mode }}</strong>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-art"></div>
+          <h3>No prediction yet</h3>
+          <p>Upload a histopathology image to see the model’s classification, confidence profile, and file details here.</p>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
