@@ -72,3 +72,5 @@ Important:
 - The paper target is `92.34%` accuracy.
 - The script reports the real achieved accuracy in `results_summary.json`.
 - It also saves `loss_curve.png`, `accuracy_curve.png`, `confusion_matrix.png`, `classification_report.txt`, and `best_model.pt`.
+
+  Youtube URL:https://youtu.be/J_6QQq2YrTY
